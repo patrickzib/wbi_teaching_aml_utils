@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pkg_resources
 
-__version__ = '0.1.5'
+__version__ = '0.1.6'
 
 class Exercise2Utils:
     @staticmethod
@@ -25,7 +25,7 @@ class Exercise2Utils:
 
     @staticmethod
     def plotLine(x_train, y_train, x_test, y_test, w):
-        plotData(x_train, y_train, x_test, y_test)
+        Exercise2Utils.plotData(x_train, y_train, x_test, y_test)
 
         # Regression Line
         axes = plt.gca()
@@ -35,7 +35,7 @@ class Exercise2Utils:
 
     @staticmethod
     def plotPolyLine(x_train, y_train, x_test, y_test, w):
-        plotData(x_train, y_train, x_test, y_test)
+        Exercise2Utils.plotData(x_train, y_train, x_test, y_test)
 
         # Regression Line
         axes = plt.gca()
