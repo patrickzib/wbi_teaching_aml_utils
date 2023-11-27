@@ -1,14 +1,16 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import pkg_resources
+import os
 
-__version__ = '0.1.6'
+from sklearn.preprocessing import StandardScaler
+
+__version__ = '0.2.3.2'
 
 class Exercise2Utils:
     @staticmethod
     def load_data_exercise_2():
-        local = pkg_resources.resource_stream(__name__, "../datasets/exercise2/ex1data2.txt")
-        data = np.loadtxt(local, delimiter=',', dtype=np.float64)
+        data_path = os.path.join(os.path.dirname(__file__), 'datasets', 'exercise2', 'ex1data2.txt')
+        data = np.loadtxt(data_path, delimiter=',', dtype=np.float64)
         x = data[:, :1] / 100 # We will only use the size as a feature
         y = data[:, 2] / 1000 # convert to 1000$
         m = y.size
@@ -107,6 +109,50 @@ class Exercise2Utils:
         _ = plt.legend(loc='best')
 
 class Exercise3Utils:
+    @staticmethod
+    def load_exam_data():
+        # The first two columns contains the exam scores and the third column
+        # contains the label.
+        data_path = os.path.join(os.path.dirname(__file__), 'datasets', 'exercise3', 'ex2data1.txt')
+        data = np.loadtxt(data_path, delimiter=',', dtype=np.float64)
+        X, y = data[:, 0:2], data[:, 2]
+        
+        # we norm the data
+        scaler = StandardScaler()
+        X = scaler.fit_transform(X)
+        
+        return X, y, scaler
+
+    @staticmethod
+    def load_microchip_data():
+        data_path = os.path.join(os.path.dirname(__file__), 'datasets', 'exercise3', 'ex2data2.txt')
+        data = np.loadtxt(data_path, delimiter=',', dtype=np.float64)
+        X = data[:, :2]
+        y = data[:, 2]
+        
+        # we norm the data
+        scaler = StandardScaler()
+        X = scaler.fit_transform(X)
+        
+        return X, y, scaler
+
+
+    @staticmethod
+    def load_sentiment_data():
+        data_path = os.path.join(os.path.dirname(__file__), 'datasets', 'exercise3', 'full_set.txt')
+        content = np.loadtxt(data_path, dtype=object, delimiter="\t")
+        
+        ## Separate the sentences from the labels
+        sentences = np.array([x[0].strip() for x in content])
+        labels = np.array([x[1].strip() for x in content])
+
+        ## Transform the labels from '0 v.s. 1' to '-1 v.s. 1'
+        y = np.array(labels, dtype='int8')
+        y = 2*y - 1
+        
+        return sentences, labels, y
+
+
     @staticmethod
     def plotData(X, y):
         fig = plt.figure(figsize=(12,8))
