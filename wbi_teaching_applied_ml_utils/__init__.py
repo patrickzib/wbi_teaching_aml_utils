@@ -4,7 +4,7 @@ import os
 
 from sklearn.preprocessing import StandardScaler
 
-__version__ = '0.2.3.2'
+__version__ = '0.2.3.3'
 
 class Exercise2Utils:
     @staticmethod
@@ -175,7 +175,8 @@ class Exercise3Utils:
         if X1.ndim > 0:
             out = [np.ones(X1.shape[0], dtype=np.float64)]
         else:
-            out = [np.ones(1, dtype=np.float64)]
+            # out = [np.ones(1, dtype=np.float64)]
+            out = [1]
 
         for i in range(1, degree + 1):
             for j in range(i + 1):
