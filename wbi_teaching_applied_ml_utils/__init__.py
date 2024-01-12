@@ -1,10 +1,28 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import platform
+
+from IPython.display import display, Markdown, Latex
+from matplotlib.widgets import Slider
 
 from sklearn.preprocessing import StandardScaler
 
-__version__ = '0.2.3.3'
+__version__ = '0.2.4.11'
+
+class Exercise1Utils:
+    def load_npy(file_name):
+        data_path = os.path.join(os.path.dirname(__file__), 'datasets', 'exercise1', file_name)
+        return np.load(data_path)
+
+    @staticmethod
+    def load_data_exercise_1():
+        train_data = Exercise1Utils.load_npy('train_data.npy')
+        train_labels = Exercise1Utils.load_npy('train_labels.npy')
+        test_data = Exercise1Utils.load_npy('test_data.npy')
+        test_labels = Exercise1Utils.load_npy('test_labels.npy')
+            
+        return train_data, train_labels, test_data, test_labels
 
 class Exercise2Utils:
     @staticmethod
@@ -251,6 +269,14 @@ class Exercise3Utils:
 
 
 class Exercise4Utils:
+
+    @staticmethod
+    def load_data(name):
+        # Load data
+        data_path = os.path.join(os.path.dirname(__file__), 'datasets', 'exercise4', name)
+        return np.loadtxt(data_path, dtype=np.float64)
+
+
     @staticmethod
     def plotData(X, y, grid=False):
         # Find Indices of Positive and Negative Examples
@@ -374,3 +400,142 @@ class Exercise4Utils:
         colors = [color_map[y] for y in y]
         plt.scatter(X[:, 0], X[:, 1], c=colors, edgecolors='black')
         plt.show()
+
+
+class Exercise5Utils:
+
+    @staticmethod
+    def plot_images(X, y):
+        fig, axes = plt.subplots(8, 8, figsize=(5,5))
+        fig.tight_layout(pad=0.13,rect=[0, 0.03, 1, 0.91]) #[left, bottom, right, top]
+        m, n = X.shape
+
+        for i,ax in enumerate(axes.flat):
+            # Select random indices
+            random_index = np.random.randint(m)
+            
+            # Select rows corresponding to the random indices and
+            # reshape the image
+            X_random_reshaped = X[random_index].reshape((28,28))
+            
+            # Display the image
+            ax.imshow(X_random_reshaped, cmap='gray')
+            
+            # Display the label above the image
+            ax.set_title(np.int32(y[random_index]))
+            ax.set_axis_off()
+            fig.suptitle("Label", fontsize=14)
+
+
+    @staticmethod    
+    def plot_non_linear_decision_boundary(X, y, model, title="Decision Boundary"):
+        Exercise3Utils.plotData(X, y)
+        
+        h = .02  # Step size in the mesh
+        x_min, x_max = X[:, 0].min() - 0.1, X[:, 0].max() + 0.1
+        y_min, y_max = X[:, 1].min() - 0.1, X[:, 1].max() + 0.1
+        xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
+        
+        # Make predictions on the meshgrid points
+        Z = model.predict(np.c_[xx.ravel(), yy.ravel()], verbose=0)
+        Z = Z.reshape(xx.shape)
+        
+        # Plot the contour plot
+        plt.contourf(xx, yy, Z, cmap=plt.cm.RdBu, alpha=0.5)
+                
+        plt.show()      
+
+
+    @staticmethod    
+    def plt_softmax(my_softmax):
+        fig, ax = plt.subplots(1,2,figsize=(8,4))
+        plt.subplots_adjust(bottom=0.35)
+
+        axz0 = fig.add_axes([0.15, 0.10, 0.30, 0.03]) # [left, bottom, width, height]
+        axz1 = fig.add_axes([0.15, 0.15, 0.30, 0.03])
+        axz2 = fig.add_axes([0.15, 0.20, 0.30, 0.03])
+        axz3 = fig.add_axes([0.15, 0.25, 0.30, 0.03])
+
+        z3 = Slider(axz3, 'z3', 0.1, 10.0, valinit=4, valstep=0.1)
+        z2 = Slider(axz2, 'z2', 0.1, 10.0, valinit=3, valstep=0.1)
+        z1 = Slider(axz1, 'z1', 0.1, 10.0, valinit=2, valstep=0.1)
+        z0 = Slider(axz0, 'z0', 0.1, 10.0, valinit=1, valstep=0.1)
+
+        z = np.array(['z0','z1','z2','z3'])
+        bar = ax[0].barh(z, height=0.6, width=[z0.val,z1.val,z2.val,z3.val], left=None, align='center')
+        bars = bar.get_children()
+        ax[0].set_xlim([0,10])
+        ax[0].set_title("z input to softmax")
+
+        a = my_softmax(np.array([z0.val,z1.val,z2.val,z3.val]))
+        anames = np.array(['a0','a1','a2','a3'])
+        sbar = ax[1].barh(anames, height=0.6, width=a, left=None, align='center',color="#C00000")
+        sbars = sbar.get_children()
+        ax[1].set_xlim([0,1])
+        ax[1].set_title("softmax(z)")
+
+        def update(val):
+            bars[0].set_width(z0.val)
+            bars[1].set_width(z1.val)
+            bars[2].set_width(z2.val)
+            bars[3].set_width(z3.val)
+            a = my_softmax(np.array([z0.val,z1.val,z2.val,z3.val]))
+            sbars[0].set_width(a[0])
+            sbars[1].set_width(a[1])
+            sbars[2].set_width(a[2])
+            sbars[3].set_width(a[3])
+
+            fig.canvas.draw_idle()
+
+        z0.on_changed(update)
+        z1.on_changed(update)
+        z2.on_changed(update)
+        z3.on_changed(update)
+
+    @staticmethod
+    def display_images(X_all):
+        """
+        Displays 2D data stored in X in a nice grid.
+        """
+        # Randomly select 100 data points to display
+        rand_indices = np.random.choice(X_all.shape[0], 100, replace=False)
+        X = X_all[rand_indices, :]
+        
+        # Compute rows, cols
+        if X.ndim == 2:
+            m, n = X.shape
+        elif X.ndim == 1:
+            n = X.size
+            m = 1
+            X = X[None]  # Promote to a 2 dimensional array
+        else:
+            raise IndexError('Input X should be 1 or 2 dimensional.')
+
+        example_width = int(np.round(np.sqrt(n)))
+        example_height = n / example_width
+
+        # Compute number of items to display
+        display_rows = int(np.floor(np.sqrt(m)))
+        display_cols = int(np.ceil(m / display_rows))
+
+        fig, ax_array = plt.subplots(display_rows, display_cols, figsize=(10, 10))
+        # fig.subplots_adjust(wspace=0.025, hspace=0.025)
+
+        ax_array = [ax_array] if m == 1 else ax_array.ravel()
+
+        for i, ax in enumerate(ax_array):
+            ax.imshow(X[i].reshape(
+                example_width, 
+                example_width),
+                cmap='Greys', extent=[0, 1, 0, 1])
+            ax.axis('off') 
+
+
+    def load_weights_task1():
+        data_path = os.path.join(os.path.dirname(__file__), 'datasets', 'exercise5', 'weights.npz')
+        weights = np.load(data_path, allow_pickle = True)
+        W1 = weights["W1"]
+        b1 = weights["b1"]
+        W2 = weights["W2"]
+        b2 = weights["b2"]   
+        return W1, b1, W2, b2
