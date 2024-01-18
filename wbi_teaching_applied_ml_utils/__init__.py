@@ -8,7 +8,7 @@ from matplotlib.widgets import Slider
 
 from sklearn.preprocessing import StandardScaler
 
-__version__ = '0.2.4.11'
+__version__ = '0.2.5'
 
 class Exercise1Utils:
     def load_npy(file_name):
