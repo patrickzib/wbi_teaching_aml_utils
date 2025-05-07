@@ -1,16 +1,119 @@
+import sys
+import requests
+import json 
+import os
+
+from PIL import Image
+from io import BytesIO
+
+import time 
+import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import os
 import platform
 
 from IPython.display import display, Markdown, Latex
 from matplotlib.widgets import Slider
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+from matplotlib.patches import Rectangle
 
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.linear_model import Lasso, Ridge, LinearRegression
 
-__version__ = '0.2.5'
+__version__ = '0.3.0'
+
+class LinearAlgebraUtils:
+    @staticmethod
+    def Plotvec(u):
+        fig, ax = plt.subplots(1,1,figsize=(4,4))
+        ax.arrow(0, 0, *u, head_width=0.05, color='r', head_length=0.1)
+        plt.text(*(u + 0.1), 'u')    
+        plt.ylim(0, 2)
+        plt.xlim(0, 2)
+        plt.show()
+        
+    @staticmethod
+    def Plotvec1(u, z, v):
+        fig, ax = plt.subplots(1,1,figsize=(4,4))
+        ax.arrow(0, 0, *u, head_width=0.05, color='r', head_length=0.1)
+        plt.text(*(u + 0.1), 'u')
+        
+        ax.arrow(0, 0, *v, head_width=0.05, color='b', head_length=0.1)
+        plt.text(*(v + 0.1), 'v')
+        
+        ax.arrow(0, 0, *z, head_width=0.05, head_length=0.1)
+        plt.text(*(z + 0.1), 'z')
+        
+        plt.ylim(-2, 2)
+        plt.xlim(-2, 2)
+        plt.show()
+
+    @staticmethod
+    def Plotvec2(a,b):
+        fig, ax = plt.subplots(1,1,figsize=(4,4))
+        ax.arrow(0, 0, *a, head_width=0.05, color ='r', head_length=0.1)
+        plt.text(*(a + 0.1), 'a')
+        ax.arrow(0, 0, *b, head_width=0.05, color ='b', head_length=0.1)
+        plt.text(*(b + 0.1), 'b')
+        plt.ylim(-2, 2)
+        plt.xlim(-2, 2)
+        plt.show()
+
+    @staticmethod
+    def plot_points(x, y):
+        fig, ax = plt.subplots(1,1,figsize=(4,4))
+        _ = plt.scatter(x,y,color='red')
+        plt.ylabel("Salary (y)")
+        plt.title("Salary Data")
+        plt.xlabel("Experience (x)")
+        plt.show()
+
+    @staticmethod
+    def plot_regression_line(x, y, w0, w1):
+        fig, ax = plt.subplots(1,1,figsize=(4,4))
+        plt.scatter(x,y,color='red')
+        axes = plt.gca()
+        x_vals = np.array(axes.get_xlim())
+        y_vals = w0 + w1 * x_vals
+        _ = plt.plot(x_vals, y_vals, '--')
+        plt.ylabel("Salary (y)")
+        plt.title("Salary Data")
+        plt.xlabel("Experience (x)")
+        plt.show()
+
+    @staticmethod
+    def plot_mean_squared_error(x, y, w1, w0, compute_l):
+        fig, ax = plt.subplots(1,1,figsize=(4,4))
+        axes = plt.gca()
+        w1_vals = np.arange(0, 20000, 100)
+        L_vals = [compute_l(x, y, w1, w0) for w1 in w1_vals]
+
+        _ = plt.plot(w1_vals, L_vals, '--')
+
+        plt.ylabel("MSE")
+        plt.title("Mean Squared Loss")
+        plt.xlabel("$w_1$")
+        plt.show()
+        
+    @staticmethod
+    def load_salary_data():
+        data_path = os.path.join(os.path.dirname(__file__), 'datasets', 'linear_algebra', 'salary_data.csv')
+        train_data = np.loadtxt(data_path, skiprows=1, delimiter=",")
+        x = train_data[:, 0]
+        y = train_data[:, 1]        
+        return x, y
+        
 
 class Exercise1Utils:
+    ## Define a function that displays a dog
+    images_URL = "http://vision.stanford.edu/aditya86/ImageNetDogs/images/"
+
+
     def load_npy(file_name):
         data_path = os.path.join(os.path.dirname(__file__), 'datasets', 'exercise1', file_name)
         return np.load(data_path)
@@ -23,6 +126,96 @@ class Exercise1Utils:
         test_labels = Exercise1Utils.load_npy('test_labels.npy')
             
         return train_data, train_labels, test_data, test_labels
+
+    @staticmethod
+    def load_data_exercise_1_dog_embeddings(subset):
+        file_name = 'vectors.csv.gz'
+        embeddings_path = os.path.join(os.path.dirname(__file__), 'datasets', 'exercise1', file_name)
+
+        df = pd.read_csv(embeddings_path, sep=';', compression='gzip', index_col=0)
+
+        # Next, we will convert the embeddings String-column into a numpy-vector
+        start_time = time.time()
+        data = df["embedding"].apply(json.loads).values
+        embeddings = np.zeros((data.shape[0], len(data[0])), dtype=np.float32)
+        for i, d in enumerate(data):
+            embeddings[i] = d
+        
+        # select a subset of the data
+        df_sub = df[df["class"].isin(subset)]
+        data_sub = embeddings[df["class"].isin(subset)]
+        filenames = df_sub["dir"].values + "/" + df_sub["filename"].values
+
+        x = data_sub
+        y = df_sub["class"].values
+        indices = np.arange(len(x), dtype=np.int32)
+
+        (x_train, x_test, 
+         y_train, y_test, 
+         idx_train, idx_test, 
+         filenames_train, filenames_test) = train_test_split(
+                x, y, indices, filenames, train_size=1000, random_state=47)
+
+        end_time = time.time()
+        print(f"Time to load {np.round(end_time-start_time,3)}s")
+
+        return (x_train, x_test, 
+                y_train, y_test, 
+                idx_train, idx_test, 
+                filenames_train, filenames_test)
+
+    @staticmethod
+    def plot_dog(filename, label):
+
+        plt.axis('off')
+        url = f'{Exercise1Utils.images_URL}/{filename}.jpg'
+        response = requests.get(url, stream=True)
+        if response.status_code == 200:
+            img = Image.open(BytesIO(response.content))        
+            plt.imshow(img)
+        plt.show()
+        print("Label ", label)
+
+    @staticmethod
+    def plot_knn_results(query_file_name, query_label, filenames_train, labels, train=True):
+        # Plot search results        
+        k = len(filenames_train)
+        fig, ax = plt.subplots(1, k+1, figsize=(3*(k+1),4))
+
+        filename = query_file_name
+        url = f'{Exercise1Utils.images_URL}/{filename}.jpg'
+
+        response = requests.get(url, stream=True)
+        if response.status_code == 200:
+            img = Image.open(BytesIO(response.content))            
+            ax[0].imshow(img)
+            ax[0].axis('off')
+            ax[0].set_title(f"Query: {query_label}")
+
+        for i, filename in enumerate(filenames_train):
+            url = f'{Exercise1Utils.images_URL}/{filename}.jpg'        
+            response = requests.get(url, stream=True)
+            
+            if response.status_code == 200:
+                img = Image.open(BytesIO(response.content))
+                ax[1+i].imshow(img)
+                ax[1+i].axis('off')
+                ax[1+i].set_title(f"{i+1}-NN: " + labels[i])
+
+                #xy = (d_train["xmin"], d_train["ymin"])
+                #width = d_train["xmax"]-d_train["xmin"]
+                #height = d_train["ymax"]-d_train["ymin"]
+                #rect = Rectangle(xy, width, height, edgecolor='white', fill=None)
+                #ax[1+i].add_patch(rect)
+                #ax[1+i].text(xy[0], xy[1], d_train["class"], fontsize=12, color='white', 
+                #             verticalalignment='bottom', horizontalalignment='left')
+                
+            else:
+                ax[i+1].remove()
+
+        plt.tight_layout()
+        plt.show()
+
 
 class Exercise2Utils:
     @staticmethod
@@ -53,25 +246,47 @@ class Exercise2Utils:
         y_vals = w[0] + w[1] * x_vals
         plt.plot(x_vals, y_vals, '-')
 
+    # @staticmethod
+    # def plotPolyLine(x_train, y_train, x_test, y_test, w):
+    #     Exercise2Utils.plotData(x_train, y_train, x_test, y_test)
+
+    #     # Regression Line
+    #     axes = plt.gca()
+    #     x_vals = np.array(axes.get_xlim())
+    #     y_vals = w[0] + w[1] * x_vals
+    #     plt.plot(x_vals, y_vals, '-')
+
+    #     # Regression Polynom
+    #     X_poly = mapPolynomialFeatures(x[:, 0], np.ones(len(x[:, 0])), 3)
+    #     w_poly = normalEqn(X_poly, y);
+    #     x1 = np.float32(np.linspace(500, 4500, 1000))
+    #     x2 = np.float32(np.linspace(1, 1, 1000))
+    #     polys = mapPolynomialFeatures(x1, x2, 3)
+
+    #     y_vals = predictPrice(polys, w_poly)
+    #     plt.plot(x1, y_vals, '.')
+
     @staticmethod
-    def plotPolyLine(x_train, y_train, x_test, y_test, w):
+    def plotPolyLines(
+            x_train, y_train, x_test, y_test, w, degree, 
+            mapPolynomialFeatures, normalEqn, predictPrice
+        ):
         Exercise2Utils.plotData(x_train, y_train, x_test, y_test)
-
-        # Regression Line
-        axes = plt.gca()
-        x_vals = np.array(axes.get_xlim())
-        y_vals = w[0] + w[1] * x_vals
-        plt.plot(x_vals, y_vals, '-')
-
+            
         # Regression Polynom
-        X_poly = mapPolynomialFeatures(x[:, 0], np.ones(len(x[:, 0])), 3)
-        w_poly = normalEqn(X_poly, y);
-        x1 = np.float32(np.linspace(500, 4500, 1000))
-        x2 = np.float32(np.linspace(1, 1, 1000))
-        polys = mapPolynomialFeatures(x1, x2, 3)
+        for degree in np.arange(2, degree+1) :
+            X_poly = mapPolynomialFeatures(x_train[:,0], degree)    
+            w_poly = normalEqn(X_poly, y_train);
+            x1 = np.float32(np.linspace(5, 45, 100))
+            x2 = np.float32(np.linspace(1, 1, 100))
+            polys = mapPolynomialFeatures(x1, degree)
+            y_vals = predictPrice(polys, w_poly)  
+            latex = "$\\dots+size^"+str(degree)+"$"
+            plt.plot(x1, y_vals, alpha=0.8, lw=2, label=latex)
+        
+        plt.legend()
+        
 
-        y_vals = predictPrice(polys, w_poly)
-        plt.plot(x1, y_vals, '.')
 
     @staticmethod
     def plotLossFunction(X, y, w0_vals, w1_vals, L_vals, w):
@@ -109,7 +324,7 @@ class Exercise2Utils:
         plt.title('Validation Curve')
         plt.xlabel('poly')
         plt.ylabel('RMSE')
-        plt.ylim(20, 100)
+        # plt.ylim(0, 100)
         plt.xticks(np.arange(min(degrees), max(degrees)+1, 1.0))
 
         plt.plot(degrees, np.sqrt(mse_train), label='Training MSE', color='darkorange', lw=2)
@@ -118,13 +333,37 @@ class Exercise2Utils:
         plt.show()
 
     @staticmethod
-    def plot_polynomial_rmse(polys, Ls_poly_train):
-        plt.figure(figsize=(8,5))  
-        plt.plot(polys, Ls_poly_train, '-', label="RMSE")
+    def plot_polynomial_rmse(polys, Ls_poly_train, Ls_poly_test=None, logscale=False):
+        plt.figure(figsize=(10,5))  
+        plt.plot(polys, Ls_poly_train, '-', label="RMSE train")
+        
+        if Ls_poly_test:
+            plt.plot(polys, Ls_poly_test, '-', label="RMSE test")
+        
+        if logscale:
+            plt.yscale('log')  # Set y-axis to log scale
+        
         plt.xlabel('polynomial degree')
         plt.ylabel('RMSE')
         plt.title('RMSE for varying polynomial degrees')
         _ = plt.legend(loc='best')
+
+    @staticmethod
+    def get_pipelines(alpha, random_state, max_iter, degree):
+        result = (make_pipeline(
+                StandardScaler(), 
+                PolynomialFeatures(degree=degree), 
+                LinearRegression()), "Linear Regression")
+        result2 = (make_pipeline(
+                StandardScaler(), 
+                PolynomialFeatures(degree=degree), 
+                Lasso(alpha=alpha, max_iter = max_iter, random_state=random_state)), "Lasso Regression")
+        result3 = (make_pipeline(
+                StandardScaler(), 
+                PolynomialFeatures(degree=degree), 
+                Ridge(alpha=alpha, max_iter = max_iter, random_state=random_state)), "Ridge Regression")
+        return (result, result2, result3)
+
 
 class Exercise3Utils:
     @staticmethod
