@@ -12,6 +12,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import platform
 
+from scipy.special import expit
+
 from IPython.display import display, Markdown, Latex
 from matplotlib.widgets import Slider
 import matplotlib.pyplot as plt
@@ -25,7 +27,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import Lasso, Ridge, LinearRegression
 
-__version__ = '0.3.0'
+__version__ = '0.3.1.4'
 
 class LinearAlgebraUtils:
     @staticmethod
@@ -246,25 +248,6 @@ class Exercise2Utils:
         y_vals = w[0] + w[1] * x_vals
         plt.plot(x_vals, y_vals, '-')
 
-    # @staticmethod
-    # def plotPolyLine(x_train, y_train, x_test, y_test, w):
-    #     Exercise2Utils.plotData(x_train, y_train, x_test, y_test)
-
-    #     # Regression Line
-    #     axes = plt.gca()
-    #     x_vals = np.array(axes.get_xlim())
-    #     y_vals = w[0] + w[1] * x_vals
-    #     plt.plot(x_vals, y_vals, '-')
-
-    #     # Regression Polynom
-    #     X_poly = mapPolynomialFeatures(x[:, 0], np.ones(len(x[:, 0])), 3)
-    #     w_poly = normalEqn(X_poly, y);
-    #     x1 = np.float32(np.linspace(500, 4500, 1000))
-    #     x2 = np.float32(np.linspace(1, 1, 1000))
-    #     polys = mapPolynomialFeatures(x1, x2, 3)
-
-    #     y_vals = predictPrice(polys, w_poly)
-    #     plt.plot(x1, y_vals, '.')
 
     @staticmethod
     def plotPolyLines(
@@ -280,13 +263,11 @@ class Exercise2Utils:
             x1 = np.float32(np.linspace(5, 45, 100))
             x2 = np.float32(np.linspace(1, 1, 100))
             polys = mapPolynomialFeatures(x1, degree)
-            y_vals = predictPrice(polys, w_poly)  
+            y_vals = [predictPrice(poly, w_poly) for poly in polys]
             latex = "$\\dots+size^"+str(degree)+"$"
             plt.plot(x1, y_vals, alpha=0.8, lw=2, label=latex)
         
-        plt.legend()
-        
-
+        plt.legend()        
 
     @staticmethod
     def plotLossFunction(X, y, w0_vals, w1_vals, L_vals, w):
@@ -321,32 +302,35 @@ class Exercise2Utils:
     @staticmethod
     def plot_validation_curve(mse_train, mse_test, degrees):
         plt.figure(figsize=(14,5))
-        plt.title('Validation Curve')
-        plt.xlabel('poly')
+        plt.title('RMSE for varying polynomial degrees')
+        plt.xlabel('polynomial Degree')
         plt.ylabel('RMSE')
         # plt.ylim(0, 100)
         plt.xticks(np.arange(min(degrees), max(degrees)+1, 1.0))
 
-        plt.plot(degrees, np.sqrt(mse_train), label='Training MSE', color='darkorange', lw=2)
-        plt.plot(degrees, np.sqrt(mse_test), label='Test MSE', color='navy', lw=2)
+        plt.plot(degrees, np.sqrt(mse_train / 2), label='Training MSE')
+        plt.plot(degrees, np.sqrt(mse_test  / 2), label='Test MSE')
         plt.legend(loc='best')
         plt.show()
 
     @staticmethod
     def plot_polynomial_rmse(polys, Ls_poly_train, Ls_poly_test=None, logscale=False):
-        plt.figure(figsize=(10,5))  
+        plt.figure(figsize=(14,5))
+        plt.title('RMSE for varying polynomial degrees')
+        plt.xlabel('polynomial Degree')
+        plt.ylabel('RMSE')
+
         plt.plot(polys, Ls_poly_train, '-', label="RMSE train")
-        
+        plt.xticks(np.arange(min(polys), max(polys)+1, 1.0))
+
         if Ls_poly_test:
             plt.plot(polys, Ls_poly_test, '-', label="RMSE test")
         
         if logscale:
-            plt.yscale('log')  # Set y-axis to log scale
+            plt.yscale('log')  # Set y-axis to log scale        
         
-        plt.xlabel('polynomial degree')
-        plt.ylabel('RMSE')
-        plt.title('RMSE for varying polynomial degrees')
-        _ = plt.legend(loc='best')
+        plt.legend(loc='best')
+        plt.show()
 
     @staticmethod
     def get_pipelines(alpha, random_state, max_iter, degree):
@@ -411,8 +395,17 @@ class Exercise3Utils:
 
 
     @staticmethod
+    def plot_learning_rate(L_history, alpha):
+        fig, ax = plt.subplots(figsize=(12,6))
+        ax.set_ylabel('$L(w)$')
+        ax.set_xlabel('Iterations')
+        plt.title('Alpha:' + str(alpha))
+        _=ax.plot(range(len(L_history)), L_history, 'b')
+
+
+    @staticmethod
     def plotData(X, y):
-        fig = plt.figure(figsize=(12,8))
+        fig = plt.figure(figsize=(8,6))
 
         # Find Indices of Positive and Negative Examples
         pos = y == 1
@@ -424,15 +417,122 @@ class Exercise3Utils:
 
         plt.xlabel('Normalized Exam 1 score')
         plt.ylabel('Normalized Exam 2 score')
-
         plt.legend(['Admitted', 'Not admitted'])
 
+    @staticmethod
+    def plotMicrofabDecisionBoundary(X_poly, y, w, cost, degree, lambda_):
+        Exercise3Utils.plotDecisionBoundary(X_poly, y, w, degree)
+        plt.xlabel('Microchip Test 1')
+        plt.ylabel('Microchip Test 2')
+        plt.legend(['y = 1', 'y = 0'])
+        plt.grid(False)
+        plt.title('lambda = %0.2f, loss = %0.2f, ' % (lambda_, cost))
+        plt.xlabel('Microchip Test 1')
+        plt.ylabel('Microchip Test 2')
+        plt.legend(['y = 1', 'y = 0'], loc='upper right')
+
+    @staticmethod
+    def sigmoid(z):
+        return expit(z)
+
+    @staticmethod
+    def plotDecisionBoundary3d(X, y, w, elev=5, azim=-45):
+        fig = plt.figure(figsize=(6, 6))
+        ax = fig.add_subplot(111, projection='3d')
+        
+        # Plot data points
+        ax.scatter(X[y == 1][:, 0], X[y == 1][:, 1], 1, label='Admitted', s=100)
+        ax.scatter(X[y == 0][:, 0], X[y == 0][:, 1], 0, label='Not admitted', s=100)
+        ax.view_init(elev=elev, azim=azim)
+
+        # Create grid to plot decision boundary plane
+        x1 = np.linspace(np.min(X[:, 0]), np.max(X[:, 0]), 10)
+        x2 = np.linspace(np.min(X[:, 1]), np.max(X[:, 1]), 10)
+        xx1, xx2 = np.meshgrid(x1, x2)
+        
+        zz = Exercise3Utils.sigmoid((w[0] + w[1]*xx1 + w[2]*xx2))
+        # zz = zz.T
+
+        # Plot the decision boundary plane
+        ax.plot_surface(xx1, xx2, zz, color='orange', alpha=0.2)
+        plt.xlabel('Normalized Exam 1 score')
+        plt.ylabel('Normalized Exam 2 score')
+        
+        ax.set_zlabel('$h_w(x)$')
+        ax.set_zlim([-1,2])
+        
+        ax.legend()
+        plt.tight_layout()
+
+
+    @staticmethod
+    def plotPolyDecisionBoundary3d(X, y, w, degree=6, elev=5, azim=-45):
+        print("Theta", w.shape)
+
+        fig = plt.figure(figsize=(6, 6))
+        ax = fig.add_subplot(111, projection='3d')
+        
+        # Plot data points
+        pred = Exercise3Utils.sigmoid(
+                np.dot(Exercise3Utils.mapFeature(X[:, 0], X[:, 1], degree), w)
+            )
+        X_pred = pred >= 0.5
+        
+        ax.scatter(
+            X[y == 1][:, 0], X[y == 1][:, 1], 
+            # 1, 
+            pred[y == 1],
+            label='Admitted', s=100)
+        ax.scatter(
+            X[y == 0][:, 0], X[y == 0][:, 1], 
+            # 0, 
+            pred[y == 0],
+            label='Not admitted', s=100)
+
+        # Create grid to plot decision boundary plane
+        # x1 = np.linspace(np.min(X[:, 0]), np.max(X[:, 0]), 20)
+        # x2 = np.linspace(np.min(X[:, 1]), np.max(X[:, 1]), 20)
+        # Define grid range
+        x1 = np.linspace(-2, 2, 50)
+        x2 = np.linspace(-2, 2, 50)
+        xx1, xx2 = np.meshgrid(x1, x2)
+        
+        z = np.zeros((x1.size, x2.size))
+        for i, ui in enumerate(x1):
+            for j, vj in enumerate(x2):
+                z[i, j] = Exercise3Utils.sigmoid(np.dot(Exercise3Utils.mapFeature(ui, vj, degree), w))
+        z = z.T
+
+        # Plot the decision boundary plane
+        ax.plot_surface(xx1, xx2, z, color='blue', alpha=0.2)
+        plt.xlabel('Microchip Test 1')
+        plt.ylabel('Microchip Test 2')
+        
+        ax.set_zlabel('$h_w(x)$')
+        ax.set_zlim([-1,2])
+        ax.view_init(elev=elev, azim=azim)
+
+        # ax.legend()
+        # plt.tight_layout()
+        # plt.show()
+
+
     @staticmethod   
-    def mapFeature(X1, X2, degree=6):
+    def mapFeature(X1, X2, degree):
+        """
+        poly = PolynomialFeatures(degree=degree, include_bias=True)                
+        if X1.ndim > 0:
+            # print("2d", np.stack([X1, X2], axis=1).shape)
+            return poly.fit_transform(np.stack([X1, X2], axis=1))
+        else: 
+            # print("1d", np.array([X1, X2]).reshape(1,-1).shape)
+            return poly.fit_transform(np.array([X1, X2]).reshape(1,-1))
+
+        """
+
         if X1.ndim > 0:
             out = [np.ones(X1.shape[0], dtype=np.float64)]
         else:
-            # out = [np.ones(1, dtype=np.float64)]
             out = [1]
 
         for i in range(1, degree + 1):
@@ -445,12 +545,12 @@ class Exercise3Utils:
             return np.array(out, dtype=np.float64)
 
     @staticmethod
-    def plotDecisionBoundary(plotData, theta, X, y, degree=6):
+    def plotDecisionBoundary(X, y, theta, degree=None):
         # make sure theta is a numpy array
         theta = np.array(theta)
 
-        # Plot Data (remember first column in X is the intercept)
-        plotData(X[:, 1:3], y)
+        # Plot Data
+        Exercise3Utils.plotData(X[:, 1:3], y)
 
         if X.shape[1] <= 3:
             # Only need 2 points to define a line, so choose two endpoints
@@ -466,19 +566,21 @@ class Exercise3Utils:
             plt.legend(['Admitted', 'Not admitted', 'Decision Boundary'])
             #plt.xlim([1, 100])
             #plt.ylim([1, 100])
+
         else:
-            # Here is the grid range
+            # Define grid range
             u = np.linspace(-2, 2, 50)
             v = np.linspace(-2, 2, 50)
 
             z = np.zeros((u.size, v.size))
+
             # Evaluate z = theta*x over the grid
             for i, ui in enumerate(u):
                 for j, vj in enumerate(v):
                     z[i, j] = np.dot(Exercise3Utils.mapFeature(ui, vj, degree), theta)
 
-            z = z.T  # important to transpose z before calling contour
-
+            # why??? important to transpose z before calling contour
+            z = z.T  
             plt.contour(u, v, z, levels=[0], linewidths=2, colors='g')
 
         plt.tight_layout()
@@ -489,7 +591,7 @@ class Exercise3Utils:
         Visualize the top-n most influential coefficients
         for linear models.
         """
-        fig = plt.figure(figsize=(10,15))
+        fig = plt.figure(figsize=(8,8))
         feature_names = np.array(feature_names)
 
         coefs  = estimator.coef_[0]
@@ -515,12 +617,28 @@ class Exercise4Utils:
         data_path = os.path.join(os.path.dirname(__file__), 'datasets', 'exercise4', name)
         return np.loadtxt(data_path, dtype=np.float64)
 
+    @staticmethod
+    def load_data_X_y(name, bias = True):
+        # Load data
+        data_path = os.path.join(os.path.dirname(__file__), 'datasets', 'exercise4', name)
+        data = np.loadtxt(data_path, dtype=np.float64)
+        
+        m,n = data.shape    
+
+        # Create training set x and labels y
+        X = data[:, 0:2]
+        y = data[:, 2]
+
+        if bias:
+            X = np.concatenate([np.ones((m, 1)), X], axis=1)    
+
+        return X, y
 
     @staticmethod
     def plotData(X, y, grid=False):
         # Find Indices of Positive and Negative Examples
         pos = y == 1
-        neg = y == 0
+        neg = (y < 1)
 
         # Plot Examples
         plt.plot(X[pos, 0], X[pos, 1], 'X', mew=1, ms=10, mec='k')
@@ -529,19 +647,23 @@ class Exercise4Utils:
 
 
     @staticmethod
-    def plotMargin(x, y, w, converged, predict) :
+    def plotMargin(x, y, w, file, seed, converged, predict) :        
         # Determine the x1- and x2- limits of the plot
         x1min = min(x[:,0]) - 0.5
         x1max = max(x[:,0]) + 0.5
         x2min = min(x[:,1]) - 0.5
         x2max = max(x[:,1]) + 0.5
         
+        fig = plt.figure(figsize=(8,6))
+        plt.title("Dataset: "+file+", seed="+str(seed)+ ", converged="+str(converged))
+
         plt.xlim(x1min,x1max)
         plt.ylim(x2min,x2max)
         
         # Plot the data points
         plt.plot(x[(y==1),0], x[(y==1),1], 'ro')
         plt.plot(x[(y==-1),0], x[(y==-1),1], 'k^')
+        
         # Construct a grid of points at which to evaluate the classifier
         if converged:
             grid_spacing = 0.02
@@ -549,14 +671,15 @@ class Exercise4Utils:
             grid = np.c_[xx1.ravel(), xx2.ravel()]
 
             Grid = np.concatenate([np.ones((grid.shape[0], 1)), grid], axis=1)        
-            Z = np.array([predict(w,pt) for pt in Grid])
-            print (Z)
+            Z = np.array([predict(w, pt) for pt in Grid])
             
             # Show the classifier's boundary using a color plot
             Z = Z.reshape(xx1.shape)
             plt.pcolormesh(xx1, xx2, Z, shading='auto', 
                             cmap=plt.cm.PRGn, vmin=-3, vmax=3)
         
+        plt.show()
+
     @staticmethod 
     def display_data_and_boundary(x, y, w, predictMultiClass):
         
@@ -587,16 +710,31 @@ class Exercise4Utils:
         
         # Show the classifier's boundary using a color plot
         Z = Z.reshape(xx1.shape)
-        plt.pcolormesh(xx1, xx2, Z, shading='auto', 
-            cmap=plt.cm.Pastel1, vmin=0, vmax=k)
+        plt.pcolormesh(xx1, xx2, Z, shading='auto', cmap=plt.cm.Pastel1, vmin=0, vmax=k)
         plt.show()
+
+
+    @staticmethod
+    def plot_boundary(X, y, clf):
+        # Plot training data
+        fig = plt.figure(figsize=(12, 6))
+        ax1 = plt.subplot(1, 2, 1)
+        ax1.set_title("Raw Data")
+        Exercise4Utils.plotData(X, y)
+
+        ax2 = plt.subplot(1, 2, 2)    
+        ax2.set_title("RBF Decision Boundary")
+        Exercise4Utils.visualizeBoundary(X, y, clf)
+
+        plt.show()
+
 
     @staticmethod
     def visualizeBoundary(X, y, clf):
         #fig = plt.figure(figsize=(6,6))
         Exercise4Utils.plotData(X, y)
 
-        h = .01  # step size in the mesh
+        h = .025  # step size in the mesh
 
         # create a mesh to plot in
         x_min, x_max = X[:, 0].min()-h, X[:, 0].max()+h
@@ -607,12 +745,8 @@ class Exercise4Utils:
 
         # Put the result into a color plot
         Z = Z.reshape(xx.shape)
-        plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
-        
-        # Plot also the training points
-        plt.scatter(X[:, 0], X[:, 1], color="g", s=3)
+        plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)        
 
-        plt.show()
 
     @staticmethod
     def visualizeBoundaryLinear(X, y, clf) :
