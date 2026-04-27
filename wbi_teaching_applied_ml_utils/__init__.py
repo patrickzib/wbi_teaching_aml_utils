@@ -27,7 +27,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import Lasso, Ridge, LinearRegression
 
-__version__ = '0.3.1.4'
+__version__ = '0.4.1'
 
 class LinearAlgebraUtils:
     @staticmethod
@@ -129,6 +129,15 @@ class Exercise1Utils:
             
         return train_data, train_labels, test_data, test_labels
 
+    def load_data_exercise_1_scaled():
+        train_data, train_labels, test_data, test_labels = Exercise1Utils.load_data_exercise_1()
+
+        scaler = StandardScaler()
+        train_data_norm = scaler.fit_transform(train_data) 
+        test_data_norm = scaler.transform(test_data)    
+            
+        return train_data, train_data_norm, train_labels, test_data, test_data_norm, test_labels
+
     @staticmethod
     def load_data_exercise_1_dog_embeddings(subset):
         file_name = 'vectors.csv.gz'
@@ -138,7 +147,7 @@ class Exercise1Utils:
 
         # Next, we will convert the embeddings String-column into a numpy-vector
         start_time = time.time()
-        data = df["embedding"].apply(json.loads).values
+        data = df["embedding"].apply(json.loads).to_numpy()
         embeddings = np.zeros((data.shape[0], len(data[0])), dtype=np.float32)
         for i, d in enumerate(data):
             embeddings[i] = d
@@ -146,10 +155,10 @@ class Exercise1Utils:
         # select a subset of the data
         df_sub = df[df["class"].isin(subset)]
         data_sub = embeddings[df["class"].isin(subset)]
-        filenames = df_sub["dir"].values + "/" + df_sub["filename"].values
+        filenames = df_sub["dir"].astype(str).to_numpy() + "/" + df_sub["filename"].astype(str).to_numpy()
 
         x = data_sub
-        y = df_sub["class"].values
+        y = df_sub["class"].to_numpy()
         indices = np.arange(len(x), dtype=np.int32)
 
         (x_train, x_test, 
@@ -177,6 +186,17 @@ class Exercise1Utils:
             plt.imshow(img)
         plt.show()
         print("Label ", label)
+
+    @staticmethod
+    def plot_train_test_errors(ks, train_scores, test_scores):
+        fig, ax = plt.subplots(figsize=(8,5))
+        ax.plot(ks, train_scores, label="Train Error")
+        ax.plot(ks, test_scores, label="Test Error")
+        ax.set_xlabel('k')
+        ax.set_ylabel('error')
+        plt.title("k-NN Error rates")
+        plt.legend()
+        plt.show()
 
     @staticmethod
     def plot_knn_results(query_file_name, query_label, filenames_train, labels, train=True):
@@ -230,6 +250,17 @@ class Exercise2Utils:
         return x, y, m
 
     @staticmethod
+    def load_data_exercise_2_scaled():        
+        x, y, m = Exercise2Utils.load_data_exercise_2()
+
+        X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.5, random_state=0)        
+        scaler = StandardScaler()
+        X_train_normalized = scaler.fit_transform(X_train)
+        X_test_normalized = scaler.transform(X_test)
+
+        return X_train, X_train_normalized, X_test, X_test_normalized, y_train, y_test, scaler
+
+    @staticmethod
     def plotData(x_train, y_train, x_test, y_test):
         plt.figure(figsize=(10,5))
         plt.scatter(x_train, y_train, label='train data')
@@ -237,6 +268,17 @@ class Exercise2Utils:
         plt.ylabel('Price in 1000$')
         plt.xlabel('Size in 100 sq-feet')
         plt.legend(loc=4)
+
+    @staticmethod
+    def plotDataModel(X_train, y_train, X_test, y_test, model, scaler):
+        Exercise2Utils.plotData(X_train, y_train, X_test, y_test)
+        axes = plt.gca()
+        axes.set_xlim([0, 60])
+        x_vals = np.array(axes.get_xlim())
+        X_new = np.arange(-2, 6, 0.1).reshape(-1,1)
+        y_new = model.predict(X_new)
+        plt.plot(scaler.inverse_transform(X_new), y_new, '-')
+        plt.show()
 
     @staticmethod
     def plotLine(x_train, y_train, x_test, y_test, w):
@@ -579,11 +621,12 @@ class Exercise3Utils:
                 for j, vj in enumerate(v):
                     z[i, j] = np.dot(Exercise3Utils.mapFeature(ui, vj, degree), theta)
 
-            # why??? important to transpose z before calling contour
+            # important to transpose z before calling contour
             z = z.T  
             plt.contour(u, v, z, levels=[0], linewidths=2, colors='g')
 
         plt.tight_layout()
+
 
     @staticmethod
     def vis_coef(estimator, feature_names, topn = 10):
@@ -641,8 +684,9 @@ class Exercise4Utils:
         neg = (y < 1)
 
         # Plot Examples
-        plt.plot(X[pos, 0], X[pos, 1], 'X', mew=1, ms=10, mec='k')
-        plt.plot(X[neg, 0], X[neg, 1], 'o', mew=1, mfc='y', ms=10, mec='k')
+        plt.scatter(X[pos][:, 0], X[pos][:, 1], zorder=100, label="1", s=100, edgecolors='black')
+        plt.scatter(X[neg][:, 0], X[neg][:, 1], zorder=100, label="0", s=100, edgecolors='black')
+  
         plt.grid(grid)
 
 
@@ -682,9 +726,7 @@ class Exercise4Utils:
 
     @staticmethod 
     def display_data_and_boundary(x, y, w, predictMultiClass):
-        
-        #fig = plt.figure(figsize=(6,6))
-        
+                
         # Determine the x1- and x2- limits of the plot
         x1min = min(x[:,0]) - 1
         x1max = max(x[:,0]) + 1
@@ -711,7 +753,7 @@ class Exercise4Utils:
         # Show the classifier's boundary using a color plot
         Z = Z.reshape(xx1.shape)
         plt.pcolormesh(xx1, xx2, Z, shading='auto', cmap=plt.cm.Pastel1, vmin=0, vmax=k)
-        plt.show()
+        # plt.show()
 
 
     @staticmethod
@@ -745,34 +787,95 @@ class Exercise4Utils:
 
         # Put the result into a color plot
         Z = Z.reshape(xx.shape)
-        plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)        
+        plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
+
+        plt.xlim(xx.min(), xx.max())
+        plt.ylim(yy.min(), yy.max())
+
+        plt.xticks(())
+        plt.yticks(())
+        plt.grid(True, linestyle='--', alpha=0.5)
 
 
     @staticmethod
-    def visualizeBoundaryLinear(X, y, clf) :
-        #fig = plt.figure(figsize=(6,6))
-        Exercise4Utils.plotData(X, y)
+    def visualizeBoundary3D(X, y, clf, elev=45, azim=-45):
+        fig = plt.figure(figsize=(6, 6))
+        ax = fig.add_subplot(111, projection='3d')
         
-        # step size in the mesh
-        h = .01
+        pos = y == 1
+        neg = (y < 1)
 
-        # create a mesh to plot in
-        x_min, x_max = X[:, 0].min()-h, X[:, 0].max()+h
-        y_min, y_max = X[:, 1].min()-h, X[:, 1].max()+h
-        xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
+        # Plot Examples
+        ax.scatter(X[pos][:, 0], X[pos][:, 1], 1, zorder=100, s=50, edgecolors='black')
+        ax.scatter(X[neg][:, 0], X[neg][:, 1], -1, zorder=100, s=50, edgecolors='black')
+        ax.view_init(elev=elev, azim=azim)
 
-        Z = clf.predict(np.c_[xx.ravel(), yy.ravel()])
+        # Create grid to plot decision boundary plane
+        x1 = np.linspace(np.min(X[:, 0]), np.max(X[:, 0]), 50)
+        x2 = np.linspace(np.min(X[:, 1]), np.max(X[:, 1]), 50)
 
-        # Put the result into a color plot
-        Z = Z.reshape(xx.shape)
-        plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
-        plt.axis('off')
+        # Define grid range        
+        xx1, xx2 = np.meshgrid(x1, x2)
+        
+        zz = np.zeros((x1.size, x2.size))
+        for i, ui in enumerate(x1):
+            for j, vj in enumerate(x2):
+                zz[i, j] = clf.predict(np.c_[ui.ravel(), vj.ravel()])
+        zz = zz.T
+        
 
-        # Plot also the training points
-        color_map = {-1: (1, 1, 1), 0: (0, 0, 0.9), 1: (1, 0, 0), 2: (0.8, 0.6, 0)}
-        colors = [color_map[y] for y in y]
-        plt.scatter(X[:, 0], X[:, 1], c=colors, edgecolors='black')
+        # Plot the decision boundary plane
+        ax.plot_surface(xx1, xx2, zz, color='blue', alpha=0.2)
+                
+        ax.set_zlabel('$h_w(x)$')
+        ax.set_zlim([-1, 1])
+
+        plt.tight_layout()
+        # plt.show()  
+
+    @staticmethod
+    def plot_train_test(X_train, y_train, X_test, y_test):
+        fig = plt.figure(figsize=(10, 5))
+
+        # Plot training data
+        ax1=plt.subplot(1, 2, 1)
+        ax1.set_title("Train data")
+        Exercise4Utils.plotData(X_train, y_train)
+
+        ax1=plt.subplot(1, 2, 2)
+        ax1.set_title("Test data")
+        Exercise4Utils.plotData(X_test, y_test)
+        
+        plt.tight_layout()
         plt.show()
+
+
+    class RBFKernelPerceptron:
+        def __init__(self, train_dual_perceptron, sigma=0.1, n_epochs=1000):
+            self.sigma = sigma  # RBF kernel parameter        
+            self.n_epochs = n_epochs        
+            self.train_dual_perceptron = train_dual_perceptron
+
+        def precompute_kernel(self, X1, X2):
+            # Compute squared Euclidean distance matrix
+            dists = np.sum(X1**2, axis=1)[:, np.newaxis] + np.sum(X2**2, axis=1) - 2 * np.dot(X1, X2.T)
+            K_train = np.exp(-dists / (2 * self.sigma ** 2))
+            return K_train    
+        
+        def fit(self, X, y):
+            self.X_train = X
+            self.y_train = y
+            self.y_train[self.y_train == 0] = -1        
+            self.K_train = self.precompute_kernel(X, X)
+
+            # Use dual training routine
+            self.alpha, converged = self.train_dual_perceptron(self.K_train, self.y_train, seed=1, n_epochs=self.n_epochs)        
+            return self
+                    
+        def predict(self, X):
+            K_test = self.precompute_kernel(X, self.X_train)
+            return np.sign(K_test @ (self.alpha * self.y_train))
+
 
 
 class Exercise5Utils:
@@ -891,7 +994,7 @@ class Exercise5Utils:
         display_rows = int(np.floor(np.sqrt(m)))
         display_cols = int(np.ceil(m / display_rows))
 
-        fig, ax_array = plt.subplots(display_rows, display_cols, figsize=(10, 10))
+        fig, ax_array = plt.subplots(display_rows, display_cols, figsize=(6, 6))
         # fig.subplots_adjust(wspace=0.025, hspace=0.025)
 
         ax_array = [ax_array] if m == 1 else ax_array.ravel()
